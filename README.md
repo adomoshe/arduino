@@ -1,2 +1,2 @@
 # arduino
-Small Arduino project
+Small Arduino project.

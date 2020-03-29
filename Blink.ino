@@ -25,9 +25,9 @@ int POSITIONS = 10;
 
 int REVOLUTIONS_PER_POSITION = MAX_REVOLUTIONS / POSITIONS;
 
-int pinkyPosition = 0;
-int ringPosition = 0;
-int pointerPosition = 0;
+int pinkyPosition = 10;
+int ringPosition = 10;
+int pointerPosition = 10;
 
 int count = 0;
 
@@ -63,6 +63,24 @@ int chooseDirectionFinger(int finger)
   }
 }
 
+void initialize()
+{
+  if (!disabled())
+  {
+    for (int i = 1; i < 4; i++)
+    {
+      int stepFinger = chooseStepFinger(i);
+      int directionFinger = chooseDirectionFinger(i);
+
+      digitalWrite(directionFinger, 1);
+      for (int j = 0; j < MAX_REVOLUTIONS * STEPS_PER_REVOLUTION; j++)
+      {
+        motorStep(stepFinger, MINIMUM_DELAY * 2);
+      }
+    }
+  }
+}
+
 // the setup function runs once when you press reset or power the board
 void setup()
 {
@@ -81,13 +99,7 @@ void setup()
 
   digitalWrite(Enable, INITIAL_STATUS);
   displayMotorStatus();
-  if (!disabled())
-  {
-    for (int i = 0; i < 4; i++)
-    {
-      runMotor(i, MINIMUM_DELAY, -POSITIONS);
-    }
-  }
+  initialize();
 }
 
 // the loop function runs over and over again forever
@@ -154,17 +166,22 @@ int chooseDirection(int fingerPosition, int desiredPosition)
 {
   if (fingerPosition > desiredPosition)
   {
-    return 1;
+    return 0;
   }
   else
   {
-    return 0;
+    return 1;
   }
 }
 
 int convertPositionToRevolutions(int fingerPosition, int desiredPosition)
 {
-  int absPosition = abs(fingerPosition - desiredPosition);
+  int absPosition = abs(abs(fingerPosition) - abs(desiredPosition));
+  Serial.println("\n\n\n");
+  Serial.println(fingerPosition);
+  Serial.println(desiredPosition);
+  Serial.println(absPosition);
+
   return absPosition * REVOLUTIONS_PER_POSITION;
 }
 
@@ -220,7 +237,7 @@ void runMotor(int finger, int motorDelay, int desiredPosition)
     motorStep(stepFinger, motorDelay);
   }
 
-  setNewFingerPosition(finger, desiredPosition);
+  setNewFingerPosition(finger, abs(abs(fingerPosition) - abs(desiredPosition)));
 }
 
 void bluetooth()
@@ -234,20 +251,11 @@ void bluetooth()
     motorDelay = MINIMUM_DELAY;
   }
 
-  if (count < 4)
+  if (count < 1)
   {
-    if (count == 1)
-    {
-      runMotor(1, 500, 6);
-    }
-    if (count == 2)
-    {
-      runMotor(2, 300, 6);
-    }
-    if (count == 3)
-    {
-      runMotor(3, motorDelay, 6);
-    }
+    runMotor(1, MINIMUM_DELAY * 3, 1);
+    runMotor(2, MINIMUM_DELAY * 3, 5);
+    runMotor(3, MINIMUM_DELAY * 3, 0);
     count++;
   }
 

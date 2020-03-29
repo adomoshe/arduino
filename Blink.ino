@@ -22,7 +22,9 @@ int INITIAL_STATUS = HIGH;
 int MINIMUM_DELAY = 70;
 int MAX_REVOLUTIONS = 45;
 
-int PINKY = PINKY_DIRECTION;
+int pinkyPosition = 0;
+int ringPosition = 0;
+int pointerPosition = 0;
 
 int count = 0;
 
@@ -103,7 +105,7 @@ void checkMotorStatus()
   }
 }
 
-void printMotorStatus(int finger, int motorDelay, int revolutions, int direction)
+void printMotorStatus(int finger, int motorDelay, int position)
 {
   Serial.println("====================================");
   Serial.print("Finger: ");
@@ -114,16 +116,48 @@ void printMotorStatus(int finger, int motorDelay, int revolutions, int direction
   Serial.print(motorDelay);
   Serial.println("");
   Serial.println("====================================");
-  Serial.print("Revolutions: ");
-  Serial.print(revolutions);
+  Serial.print("Position: ");
+  Serial.print(position);
   Serial.println("");
   Serial.println("====================================");
-  Serial.print("Direction: ");
-  Serial.print(direction);
-  Serial.println("");
-  Serial.println("====================================");
+
   Serial.println("\n\n");
 }
+
+int getFingerPosition(int finger)
+{
+  if (finger == 1)
+  {
+    return pinkyPosition;
+  }
+  else if (finger == 2)
+  {
+    return ringPosition;
+  }
+  else if (finger == 3)
+  {
+    return pointerPosition;
+  }
+}
+
+int chooseDirection(int finger, int desiredPosition)
+{
+  int fingerPosition = getFingerPosition(finger);
+  if (fingerPosition > desiredPosition)
+  {
+    return 1;
+  }
+  else if (fingerPosition < desiredPosition)
+  {
+    return 0;
+  }
+  else
+  {
+    return 2;
+  }
+}
+
+int convertPositionToRevolutions(int fingerPosition, int desiredPosition)
 
 void motorStep(int stepFinger, int motorDelay)
 {
@@ -133,12 +167,25 @@ void motorStep(int stepFinger, int motorDelay)
   delayMicroseconds(motorDelay);
 }
 
-void runMotor(int finger, int motorDelay, int revolutions, int direction)
+void runMotor(int finger, int motorDelay, int position)
 {
-  printMotorStatus(finger, motorDelay, revolutions, direction);
+  printMotorStatus(finger, motorDelay, position);
 
   int stepFinger = chooseStepFinger(finger);
   int directionFinger = chooseDirectionFinger(finger);
+
+  int direction = chooseDirection(finger, position);
+  if (direction == 2)
+  {
+    Serial.println("\n\n");
+    Serial.println("====================================");
+    Serial.println("FINGER POSITION SAME SAME")
+    Serial.println("====================================");
+    Serial.println("\n\n");
+    return;
+  }
+
+  int revolutions = convertPositionToRevolutions(position);
 
   digitalWrite(directionFinger, direction);
   for (int i = 0; i < revolutions * STEPS_PER_REVOLUTION; i++)
@@ -153,6 +200,11 @@ void bluetooth()
   int finger = 2;
   int revolutions = 20;
   int direction = 1;
+
+  if (motorDelay < MINIMUM_DELAY)
+  {
+    motorDelay = MINIMUM_DELAY;
+  }
 
   if (count < 4)
   {

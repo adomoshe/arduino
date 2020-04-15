@@ -2,9 +2,9 @@
 #include <SoftwareSerial.h>
 
 // Define stepper motor connections and steps per revolution:
-#define PINKY_PIN 40
-#define RING_PIN 41
-#define POINTER_PIN 42
+#define PINKY_PIN 9
+#define RING_PIN 10
+#define POINTER_PIN 5
 
 Servo pinky;
 Servo ring;
@@ -39,15 +39,11 @@ Servo chooseFinger(int finger)
 
 void initialize()
 {
-    for (int i = 3; i < 4; i++)
-    {
-      Servo finger = chooseFinger(i);
-
-      for (int pos = 0; pos < 100; pos++)
-      {
-        motorStep(finger, pos, MINIMUM_DELAY);
-      }
-    }
+  for (int i = 1; i < 3; i++)
+  {
+    Servo finger = chooseFinger(i);
+    motorStep(finger, 0, 0);
+  }
 }
 
 // the setup function runs once when you press reset or power the board
@@ -114,34 +110,23 @@ int getFingerPosition(int finger)
 
 void motorStep(Servo finger, int pos, int motorDelay)
 {
-  finger.write(pos);  
+  finger.write(pos);
   delay(motorDelay);
-}
-
-void setNewFingerPosition(int finger, int desiredPosition)
-{
-  if (finger == 1)
-  {
-    pinkyPosition = desiredPosition;
-  }
-  else if (finger == 2)
-  {
-    ringPosition = desiredPosition;
-  }
-  else if (finger == 3)
-  {
-    pointerPosition = desiredPosition;
-  }
 }
 
 void runMotor(int fingerInt, int motorDelay, int desiredPosition)
 {
   printMotorStatus(fingerInt, motorDelay, desiredPosition);
 
-  int fingerPosition = getFingerPosition(fingerInt);
   Servo finger = chooseFinger(fingerInt);
+  int currentPosition = finger.read();
 
-  if (fingerPosition == desiredPosition)
+  if (desiredPosition > 180)
+  {
+    Serial.println("FINGER POSITION TOO BIG");
+    return;
+  }
+  if (currentPosition == desiredPosition)
   {
     Serial.println("\n\n");
     Serial.println("====================================");
@@ -151,12 +136,20 @@ void runMotor(int fingerInt, int motorDelay, int desiredPosition)
     return;
   }
 
-  for (int pos = 0; pos < 180; pos++)
+  if (currentPosition > desiredPosition)
   {
-    motorStep(finger, pos, motorDelay);
+    for (int pos = currentPosition + 1; pos < desiredPosition; pos++)
+    {
+      motorStep(finger, pos, motorDelay);
+    }
   }
-
-  setNewFingerPosition(fingerInt, abs(abs(fingerPosition) - abs(desiredPosition)));
+  else
+  {
+    for (int pos = currentPosition - 1; pos > desiredPosition; pos--)
+    {
+      motorStep(finger, pos, motorDelay);
+    }
+  }
 }
 
 void bluetooth()
@@ -172,9 +165,9 @@ void bluetooth()
 
   if (count < 1)
   {
-    runMotor(1, MINIMUM_DELAY * 3, 3);
-    runMotor(2, MINIMUM_DELAY * 3, 5);
-    runMotor(3, MINIMUM_DELAY, 0);
+    motorStep(pinky, 100, 10);
+    motorStep(ring, 100, 10);
+    // runMotor(3, 20, 10);
     count++;
   }
 

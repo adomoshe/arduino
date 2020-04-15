@@ -1,29 +1,19 @@
+#include <Servo.h>
 #include <SoftwareSerial.h>
 
-/*Example sketch to control a stepper motor with A4988/DRV8825 stepper motor driver and Arduino without a library. More info: https://www.makerguides.com */
 // Define stepper motor connections and steps per revolution:
-#define PINKY_DIRECTION 5
-#define RING_DIRECTION 6
-#define POINTER_DIRECTION 7
+#define PINKY_PIN 40
+#define RING_PIN 41
+#define POINTER_PIN 42
 
-#define PINKY_STEP 2
-#define RING_STEP 3
-#define POINTER_STEP 4
-
-#define Enable 8
-
-#define STEPS_PER_REVOLUTION 200
+Servo pinky;
+Servo ring;
+Servo pointer;
 
 SoftwareSerial mySerial(10, 11); // RX, TX
 String command = "";             // Stores response of bluetooth device
 
-int INITIAL_STATUS = HIGH;
-
 int MINIMUM_DELAY = 70;
-int MAX_REVOLUTIONS = 45;
-int POSITIONS = 10;
-
-int REVOLUTIONS_PER_POSITION = MAX_REVOLUTIONS / POSITIONS;
 
 int pinkyPosition = 10;
 int ringPosition = 10;
@@ -31,54 +21,33 @@ int pointerPosition = 10;
 
 int count = 0;
 
-int chooseStepFinger(int finger)
+Servo chooseFinger(int finger)
 {
   if (finger == 1)
   {
-    return PINKY_STEP;
+    return pinky;
   }
   else if (finger == 2)
   {
-    return RING_STEP;
+    return ring;
   }
   else if (finger == 3)
   {
-    return POINTER_STEP;
-  }
-}
-
-int chooseDirectionFinger(int finger)
-{
-  if (finger == 1)
-  {
-    return PINKY_DIRECTION;
-  }
-  else if (finger == 2)
-  {
-    return RING_DIRECTION;
-  }
-  else if (finger == 3)
-  {
-    return POINTER_DIRECTION;
+    return pointer;
   }
 }
 
 void initialize()
 {
-  if (!disabled())
-  {
-    for (int i = 1; i < 4; i++)
+    for (int i = 3; i < 4; i++)
     {
-      int stepFinger = chooseStepFinger(i);
-      int directionFinger = chooseDirectionFinger(i);
+      Servo finger = chooseFinger(i);
 
-      digitalWrite(directionFinger, 1);
-      for (int j = 0; j < MAX_REVOLUTIONS * STEPS_PER_REVOLUTION; j++)
+      for (int pos = 0; pos < 100; pos++)
       {
-        motorStep(stepFinger, MINIMUM_DELAY * 2);
+        motorStep(finger, pos, MINIMUM_DELAY);
       }
     }
-  }
 }
 
 // the setup function runs once when you press reset or power the board
@@ -88,16 +57,10 @@ void setup()
   mySerial.begin(9600);
   pinMode(LED_BUILTIN, OUTPUT);
   // Declare pins as output:
-  pinMode(PINKY_STEP, OUTPUT);
-  pinMode(RING_STEP, OUTPUT);
-  pinMode(POINTER_STEP, OUTPUT);
+  pinky.attach(PINKY_PIN);
+  ring.attach(RING_PIN);
+  pointer.attach(POINTER_PIN);
 
-  pinMode(PINKY_DIRECTION, OUTPUT);
-  pinMode(RING_DIRECTION, OUTPUT);
-  pinMode(POINTER_DIRECTION, OUTPUT);
-  pinMode(Enable, OUTPUT);
-
-  digitalWrite(Enable, INITIAL_STATUS);
   displayMotorStatus();
   initialize();
 }
@@ -108,23 +71,10 @@ void loop()
   bluetooth();
 }
 
-bool disabled()
-{
-  return digitalRead(Enable);
-}
-
 void displayMotorStatus()
 {
-  if (disabled())
-  {
-    Serial.println("MOTORS DISABLED");
-    digitalWrite(LED_BUILTIN, LOW);
-  }
-  else
-  {
-    Serial.println("MOTORS ENABLED");
-    digitalWrite(LED_BUILTIN, HIGH);
-  }
+  Serial.println("MOTORS ENABLED");
+  digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void printMotorStatus(int finger, int motorDelay, int position)
@@ -162,35 +112,10 @@ int getFingerPosition(int finger)
   }
 }
 
-int chooseDirection(int fingerPosition, int desiredPosition)
+void motorStep(Servo finger, int pos, int motorDelay)
 {
-  if (fingerPosition > desiredPosition)
-  {
-    return 0;
-  }
-  else
-  {
-    return 1;
-  }
-}
-
-int convertPositionToRevolutions(int fingerPosition, int desiredPosition)
-{
-  int absPosition = abs(abs(fingerPosition) - abs(desiredPosition));
-  Serial.println("\n\n\n");
-  Serial.println(fingerPosition);
-  Serial.println(desiredPosition);
-  Serial.println(absPosition);
-
-  return absPosition * REVOLUTIONS_PER_POSITION;
-}
-
-void motorStep(int stepFinger, int motorDelay)
-{
-  digitalWrite(stepFinger, HIGH);
-  delayMicroseconds(motorDelay);
-  digitalWrite(stepFinger, LOW);
-  delayMicroseconds(motorDelay);
+  finger.write(pos);  
+  delay(motorDelay);
 }
 
 void setNewFingerPosition(int finger, int desiredPosition)
@@ -209,14 +134,12 @@ void setNewFingerPosition(int finger, int desiredPosition)
   }
 }
 
-void runMotor(int finger, int motorDelay, int desiredPosition)
+void runMotor(int fingerInt, int motorDelay, int desiredPosition)
 {
-  printMotorStatus(finger, motorDelay, desiredPosition);
+  printMotorStatus(fingerInt, motorDelay, desiredPosition);
 
-  int stepFinger = chooseStepFinger(finger);
-  int directionFinger = chooseDirectionFinger(finger);
-
-  int fingerPosition = getFingerPosition(finger);
+  int fingerPosition = getFingerPosition(fingerInt);
+  Servo finger = chooseFinger(fingerInt);
 
   if (fingerPosition == desiredPosition)
   {
@@ -228,16 +151,12 @@ void runMotor(int finger, int motorDelay, int desiredPosition)
     return;
   }
 
-  int direction = chooseDirection(fingerPosition, desiredPosition);
-  int revolutions = convertPositionToRevolutions(fingerPosition, desiredPosition);
-
-  digitalWrite(directionFinger, direction);
-  for (int i = 0; i < revolutions * STEPS_PER_REVOLUTION; i++)
+  for (int pos = 0; pos < 180; pos++)
   {
-    motorStep(stepFinger, motorDelay);
+    motorStep(finger, pos, motorDelay);
   }
 
-  setNewFingerPosition(finger, abs(abs(fingerPosition) - abs(desiredPosition)));
+  setNewFingerPosition(fingerInt, abs(abs(fingerPosition) - abs(desiredPosition)));
 }
 
 void bluetooth()
@@ -253,9 +172,9 @@ void bluetooth()
 
   if (count < 1)
   {
-    runMotor(1, MINIMUM_DELAY * 3, 1);
+    runMotor(1, MINIMUM_DELAY * 3, 3);
     runMotor(2, MINIMUM_DELAY * 3, 5);
-    runMotor(3, MINIMUM_DELAY * 3, 0);
+    runMotor(3, MINIMUM_DELAY, 0);
     count++;
   }
 

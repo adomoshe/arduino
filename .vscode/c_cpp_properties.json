@@ -21,7 +21,7 @@
             "intelliSenseMode": "clang-x64",
             "cStandard": "c11",
             "cppStandard": "c++17",
-            "compilerPath": "/usr/bin/gcc",
+            "compilerPath": "/usr/bin/gcc"
         }
     ],
     "version": 4

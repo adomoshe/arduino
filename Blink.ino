@@ -22,34 +22,40 @@ String command = "";             // Stores response of bluetooth device
 
 int MINIMUM_DELAY = 70;
 
-int pinkyPosition = 10;
-int ringPosition = 10;
-int pointerPosition = 10;
-
-int count = 0;
-
 Servo chooseFinger(int finger)
 {
-  if (finger == 1)
+  if (finger == 0)
   {
     return pinky;
   }
-  else if (finger == 2)
+  else if (finger == 1)
   {
     return ring;
   }
+  else if (finger == 2)
+  {
+    return middle;
+  }
   else if (finger == 3)
   {
-    return pointer;
+    return index;
+  }
+  else if (finger == 4)
+  {
+    return thumb;
+  }
+  else if (finger == 5)
+  {
+    return thumbAngle;
   }
 }
 
 void initialize()
 {
-  for (int i = 1; i < 3; i++)
+  for (int i = 0; i < 6; i++)
   {
     Servo finger = chooseFinger(i);
-    motorStep(finger, 0, 0);
+    motorStep(finger, 0);
   }
 }
 
@@ -59,7 +65,7 @@ void setup()
   Serial.begin(9600);
   mySerial.begin(9600);
   pinMode(LED_BUILTIN, OUTPUT);
-  // Declare pins as output:
+
   pinky.attach(PINKY_PIN);
   ring.attach(RING_PIN);
   middle.attach(MIDDLE_PIN);
@@ -83,88 +89,58 @@ void displayMotorStatus()
   digitalWrite(LED_BUILTIN, HIGH);
 }
 
-void printMotorStatus(int finger, int motorDelay, int position)
-{
-  Serial.println("====================================");
-  Serial.print("Finger: ");
-  Serial.print(finger);
-  Serial.println("");
-  Serial.println("====================================");
-  Serial.print("Motor Delay: ");
-  Serial.print(motorDelay);
-  Serial.println("");
-  Serial.println("====================================");
-  Serial.print("Position: ");
-  Serial.print(position);
-  Serial.println("");
-  Serial.println("====================================");
-
-  Serial.println("\n\n");
-}
-
-int getFingerPosition(int finger)
-{
-  if (finger == 1)
-  {
-    return pinkyPosition;
-  }
-  else if (finger == 2)
-  {
-    return ringPosition;
-  }
-  else if (finger == 3)
-  {
-    return pointerPosition;
-  }
-}
-
-void motorStep(Servo finger, int pos, int motorDelay)
+void motorStep(Servo finger, int pos)
 {
   finger.write(pos);
-  delay(motorDelay);
 }
 
-void runMotor(int fingerInt, int motorDelay, int desiredPosition)
+int convertPosition(String desiredP)
 {
-  printMotorStatus(fingerInt, motorDelay, desiredPosition);
-
-  Servo finger = chooseFinger(fingerInt);
-  int currentPosition = finger.read();
-
-  if (desiredPosition > 180)
-  {
-    Serial.println("FINGER POSITION TOO BIG");
-    return;
-  }
-  if (currentPosition == desiredPosition)
-  {
-    Serial.println("\n\n");
-    Serial.println("====================================");
-    Serial.println("FINGER POSITION SAME SAME");
-    Serial.println("====================================");
-    Serial.println("\n\n");
-    return;
-  }
-
-  if (currentPosition > desiredPosition)
-  {
-    for (int pos = currentPosition + 1; pos < desiredPosition; pos++)
-    {
-      motorStep(finger, pos, motorDelay);
-    }
-  }
-  else
-  {
-    for (int pos = currentPosition - 1; pos > desiredPosition; pos--)
-    {
-      motorStep(finger, pos, motorDelay);
-    }
-  }
+  // const int mapValue = map(desiredP.toInt(), 0, 1, 0, 180);
+  return desiredP.toInt() * 18;
 }
 
-int convertPosition(String position)
+void runMotor(
+    String pinkyP,
+    String ringP,
+    String middleP,
+    String indexP,
+    String thumbP,
+    String thumbAngleP,
+    String speed)
 {
-  return position.toInt() * 18;
+  // Servo finger = chooseFinger(fingerInt);
+
+  // const int currPinkyP = pinky.read();
+  // const int currRingP = pinky.read();
+  // const int currMiddleP = middle.read();
+  // const int currIndexP = index.read();
+  // const int currThumbP = thumb.read();
+  // const int thumbAngleP = thumbAngle.read();
+
+  const int toPinkyP = convertPosition(pinkyP);
+  const int toRingP = convertPosition(ringP);
+  const int toMiddleP = convertPosition(middleP);
+  const int toIndexP = convertPosition(indexP);
+  const int toThumbP = convertPosition(thumbP);
+  // const int toThumbAngleP = convertPosition(thumbAngleP, currThumbAngleP);
+
+  // const int movementInAngles = abs(toPosition - currentPosition);
+  // Serial.println("------------------");
+  // Serial.println("Pinky Position");
+  // Serial.print(toPinkyP);
+  // Serial.println("------------------");
+  const int speedInt = speed.toInt();
+  // const int steps = movementInAngles;
+  // for (int i = steps; i > 0; i--)
+  // {
+  pinky.write(toPinkyP);
+  ring.write(toRingP);
+  middle.write(toMiddleP);
+  index.write(toIndexP);
+  thumb.write(toThumbP);
+  // delay(speedInt * 10);
+  // }
 }
 
 void bluetooth()
@@ -176,37 +152,6 @@ void bluetooth()
   if (motorDelay < MINIMUM_DELAY)
   {
     motorDelay = MINIMUM_DELAY;
-  }
-
-  if (count < 1)
-  {
-    motorStep(pinky, 100, 10);
-    motorStep(ring, 100, 10);
-    // runMotor(3, 20, 10);
-    count++;
-  }
-  delay(300);
-  if (count == 1)
-  {
-    motorStep(pinky, 50, 120);
-    motorStep(ring, 50, 60);
-    count++;
-  }
-  delay(300);
-
-  if (count == 2)
-  {
-    motorStep(pinky, 0, 50);
-    motorStep(ring, 0, 50);
-    count++;
-  }
-  delay(300);
-
-  if (count == 3)
-  {
-    motorStep(pinky, 100, 50);
-    motorStep(ring, 100, 50);
-    count++;
   }
 
   if (Serial.available())
@@ -224,13 +169,19 @@ void bluetooth()
     const String thumbAnglePosition = command.substring(5, 6);
     const String speed = command.substring(6, 7);
 
-    motorStep(pinky, convertPosition(pinkyPosition), speed.toInt());
-    motorStep(ring, convertPosition(pinkyPosition), speed.toInt());
-    motorStep(middle, convertPosition(pinkyPosition), speed.toInt());
-    motorStep(pointer, convertPosition(pinkyPosition), speed.toInt());
-    motorStep(index, convertPosition(pinkyPosition), speed.toInt());
-    motorStep(thumb, convertPosition(pinkyPosition), speed.toInt());
-    motorStep(thumbAngle, convertPosition(pinkyPosition), speed.toInt());
+    runMotor(
+        pinkyPosition,
+        ringPosition,
+        middlePosition,
+        indexPosition,
+        thumbPosition,
+        thumbAnglePosition,
+        speed);
+    // runMotor(1, ringPosition, speed);
+    // runMotor(2, middlePosition, speed);
+    // runMotor(3, indexPosition, speed);
+    // runMotor(4, thumbPosition, speed);
+    // runMotor(5, thumbAnglePosition, speed);
 
     Serial.println(pinkyPosition);
     Serial.println(ringPosition);

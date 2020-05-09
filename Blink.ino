@@ -2,13 +2,20 @@
 #include <SoftwareSerial.h>
 
 // Define stepper motor connections and steps per revolution:
-#define PINKY_PIN 9
-#define RING_PIN 10
-#define POINTER_PIN 5
+#define PINKY_PIN 8
+#define RING_PIN 7
+#define MIDDLE_PIN 6
+#define INDEX_PIN 5
+#define THUMB_PIN 4
+#define THUMB_ANGLE_PIN 3
 
 Servo pinky;
 Servo ring;
+Servo middle;
 Servo pointer;
+Servo index;
+Servo thumb;
+Servo thumbAngle;
 
 SoftwareSerial mySerial(10, 11); // RX, TX
 String command = "";             // Stores response of bluetooth device
@@ -55,7 +62,10 @@ void setup()
   // Declare pins as output:
   pinky.attach(PINKY_PIN);
   ring.attach(RING_PIN);
-  pointer.attach(POINTER_PIN);
+  middle.attach(MIDDLE_PIN);
+  index.attach(INDEX_PIN);
+  thumb.attach(THUMB_PIN);
+  thumbAngle.attach(THUMB_ANGLE_PIN);
 
   displayMotorStatus();
   initialize();
@@ -152,6 +162,11 @@ void runMotor(int fingerInt, int motorDelay, int desiredPosition)
   }
 }
 
+int convertPosition(String position)
+{
+  return position.toInt() * 18;
+}
+
 void bluetooth()
 {
   int finger = 2;
@@ -170,21 +185,61 @@ void bluetooth()
     // runMotor(3, 20, 10);
     count++;
   }
-
-  if (mySerial.available())
+  delay(300);
+  if (count == 1)
   {
-    while (mySerial.available())
-    { // While there is more to be read, keep reading.
-      command += (char)mySerial.read();
-    }
-    Serial.println(command);
-    command = ""; // No repeats
+    motorStep(pinky, 50, 120);
+    motorStep(ring, 50, 60);
+    count++;
+  }
+  delay(300);
+
+  if (count == 2)
+  {
+    motorStep(pinky, 0, 50);
+    motorStep(ring, 0, 50);
+    count++;
+  }
+  delay(300);
+
+  if (count == 3)
+  {
+    motorStep(pinky, 100, 50);
+    motorStep(ring, 100, 50);
+    count++;
   }
 
-  // Read user input if available.
   if (Serial.available())
   {
-    delay(10); // The DELAY!
-    mySerial.write(Serial.read());
+    while (Serial.available())
+    { // While there is more to be read, keep reading.
+      command += (char)Serial.read();
+    }
+    Serial.println(command);
+    const String pinkyPosition = command.substring(0, 1);
+    const String ringPosition = command.substring(1, 2);
+    const String middlePosition = command.substring(2, 3);
+    const String indexPosition = command.substring(3, 4);
+    const String thumbPosition = command.substring(4, 5);
+    const String thumbAnglePosition = command.substring(5, 6);
+    const String speed = command.substring(6, 7);
+
+    motorStep(pinky, convertPosition(pinkyPosition), speed.toInt());
+    motorStep(ring, convertPosition(pinkyPosition), speed.toInt());
+    motorStep(middle, convertPosition(pinkyPosition), speed.toInt());
+    motorStep(pointer, convertPosition(pinkyPosition), speed.toInt());
+    motorStep(index, convertPosition(pinkyPosition), speed.toInt());
+    motorStep(thumb, convertPosition(pinkyPosition), speed.toInt());
+    motorStep(thumbAngle, convertPosition(pinkyPosition), speed.toInt());
+
+    Serial.println(pinkyPosition);
+    Serial.println(ringPosition);
+    Serial.println(middlePosition);
+    Serial.println(indexPosition);
+    Serial.println(thumbPosition);
+    Serial.println(thumbAnglePosition);
+    Serial.println(speed);
+
+    command = ""; // No repeats
   }
 }
